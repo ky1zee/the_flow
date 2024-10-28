@@ -1,13 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:the_flow/database/database_provider.dart';
 import 'package:the_flow/pages/home_page.dart';
-import 'package:the_flow/theme/theme.provider.dart';
+import 'package:the_flow/theme/theme_provider.dart';
 
 
-void main() {
+void main() async{
+  WidgetsFlutterBinding.ensureInitialized();
+  // Initialize database
+  await Database.initialize();
   runApp(
-    ChangeNotifierProvider(create: (context) => ThemeProvider(),
-    child: const MyApp(),)
+    MultiProvider(
+        providers: [
+          ChangeNotifierProvider(create: (context) => Database()),
+          ChangeNotifierProvider(create: (context) =>  ThemeProvider())
+        ],
+      child: const MyApp(),
+    )
   );
 }
 

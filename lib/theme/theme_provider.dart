@@ -25,7 +25,7 @@ class ThemeProvider extends ChangeNotifier{
       await _saveTheme(false); // Save light mode theme
     } else {
       _themeData = darkMode;
-      await _saveTheme(true); // Save dark mode them
+      await _saveTheme(true); // Save dark mode theme
     }
     notifyListeners();
   }
