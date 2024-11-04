@@ -1,61 +1,89 @@
 import 'package:flutter/cupertino.dart';
 import 'package:isar/isar.dart';
 import 'package:the_flow/models/habit.dart';
-import 'package:the_flow/models/habit_log.dart';
-import 'package:the_flow/models/timer_log.dart';
 import 'package:path_provider/path_provider.dart';
 
 class Database extends ChangeNotifier{
   static late Isar isar;
 
   // INITIALIZE
-  static Future<void> initialize() async {
+  static Future<void> initialize() async{
     final dir = await getApplicationDocumentsDirectory();
-    isar = await Isar.open([
-      HabitSchema,
-      HabitLogSchema,
-      TimerLogSchema,
-    ], directory: dir.path);
+    isar = await Isar.open(
+        [HabitSchema], directory: dir.path
+    );
   }
 
-  // CRUD OPERATION
-  Future<int> addHabit(Habit habit) async {
-    return await isar.writeTxn(() async => await isar.habits.put(habit));
+  // LIST HABITS
+  final List<Habit> listHabit = [];
+
+  // CREATE
+  Future<void> createHabit(String habitName) async{
+    final newHabit = Habit()..name = habitName;
+    await isar.writeTxn(() => isar.habits.put(newHabit));
+    readHabit();
   }
 
-  Future<Habit?> getHabit(int id) async {
-    return await isar.habits.get(id);
+  // READ
+  Future<void> readHabit() async{
+    List<Habit> fetchedHabit = await isar.habits.where().findAll();
+    listHabit.clear();
+    listHabit.addAll(fetchedHabit);
+    notifyListeners();
   }
 
-  Future<void> updateHabit(Habit habit) async {
-    await isar.writeTxn(() async => await isar.habits.put(habit));
+  // CHECKLIST
+  Future<void> checklistHabit(int id, bool isCompleted) async{
+    final habit =  await isar.habits.get(id);
+    if(habit != null){
+      await isar.writeTxn(() async {
+        if(isCompleted && !habit.completedDays.contains(DateTime.now())){
+          final today = DateTime.now();
+          
+          habit.completedDays.add(
+            DateTime(
+              today.year,
+              today.month,
+              today.day,
+            )
+          );
+        }
+        
+        else{
+          habit.completedDays.removeWhere((date) =>
+              date.year == DateTime.now().year &&
+              date.month == DateTime.now().month &&
+              date.day == DateTime.now().day
+          );
+        }
+
+        await isar.habits.put(habit);
+      });
+    }
+
+    readHabit();
   }
 
-  Future<void> deleteHabit(int id) async {
-    await isar.writeTxn(() async => await isar.habits.delete(id));
+  // UPDATE NAME
+  Future<void> updateHabit(int id, String newName) async{
+    final habit =  await isar.habits.get(id);
+
+    if(habit != null){
+      await isar.writeTxn(() async{
+        habit.name = newName;
+        await isar.habits.put(habit);
+      });
+    }
+
+    readHabit();
   }
 
-  // VISUALIZATION
-  Future<List<HabitLog>> getHabitLogsForMonth(int habitId, DateTime month) async {
-    return await isar.habitLogs
-        .filter()
-        .habitIdEqualTo(habitId)
-        .dateBetween(
-      DateTime(month.year, month.month, 1),
-      DateTime(month.year, month.month + 1, 0),
-    )
-        .findAll();
-  }
+  // DELETE HABIT
+  Future<void> deleteHabit(int id) async{
+    await isar.writeTxn(() async {
+      await isar.habits.delete(id);
+    });
 
-  // CHECK TIMER FOR CHECKLIST HABIT
-  Future<void> startTimer(Habit habit, int durationInMinutes) async {
-    final timerLog = TimerLog()
-      ..habitId = habit.id
-      ..startTime = DateTime.now()
-      ..duration = durationInMinutes * 60
-      ..isTimerActive = true
-      ..targetEndTime = DateTime.now().add(Duration(minutes: durationInMinutes));
-
-    await isar.writeTxn(() async => await isar.timerLogs.put(timerLog));
+    readHabit();
   }
 }

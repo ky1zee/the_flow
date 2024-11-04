@@ -1,9 +1,9 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:the_flow/database/database_provider.dart';
+import 'package:the_flow/models/habit.dart';
 import 'package:the_flow/theme/theme_provider.dart';
-
-
 
 class HomePage extends StatefulWidget{
   const HomePage({super.key});
@@ -13,8 +13,6 @@ class HomePage extends StatefulWidget{
 }
 
 class _HomePageState extends State<HomePage> {
-
-
 
   @override
   Widget build(BuildContext context){
@@ -31,10 +29,10 @@ class _HomePageState extends State<HomePage> {
               Text(
                 "Dark Mode",
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  color: Theme.of(context).colorScheme.inversePrimary, // Warna teks mengikuti tema
+                  color: Theme.of(context).colorScheme.inversePrimary,
                 ),
               ),
-              SizedBox(height: 8.0), // spacing between text and switch
+              SizedBox(height: 8.0),
               CupertinoSwitch(
                 value: Provider.of<ThemeProvider>(context).isDarkMode,
                 onChanged: (value) =>

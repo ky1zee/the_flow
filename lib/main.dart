@@ -9,6 +9,8 @@ void main() async{
   WidgetsFlutterBinding.ensureInitialized();
   // Initialize database
   await Database.initialize();
+
+
   runApp(
     MultiProvider(
         providers: [
