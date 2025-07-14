@@ -9,7 +9,7 @@ void main() async{
   WidgetsFlutterBinding.ensureInitialized();
   // Initialize database
   await Database.initialize();
-
+  await Database().saveFirstLaunchDate();
 
   runApp(
     MultiProvider(

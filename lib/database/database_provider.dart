@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:isar/isar.dart';
+import 'package:the_flow/models/app_settings.dart';
 import 'package:the_flow/models/habit.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -10,12 +11,12 @@ class Database extends ChangeNotifier{
   static Future<void> initialize() async{
     final dir = await getApplicationDocumentsDirectory();
     isar = await Isar.open(
-        [HabitSchema], directory: dir.path
+        [HabitSchema, AppSettingsSchema], directory: dir.path
     );
   }
 
   // LIST HABITS
-  final List<Habit> listHabit = [];
+  final List<Habit> currentHabit = [];
 
   // CREATE
   Future<void> createHabit(String habitName) async{
@@ -27,8 +28,8 @@ class Database extends ChangeNotifier{
   // READ
   Future<void> readHabit() async{
     List<Habit> fetchedHabit = await isar.habits.where().findAll();
-    listHabit.clear();
-    listHabit.addAll(fetchedHabit);
+    currentHabit.clear();
+    currentHabit.addAll(fetchedHabit);
     notifyListeners();
   }
 
@@ -86,4 +87,18 @@ class Database extends ChangeNotifier{
 
     readHabit();
   }
+
+  Future<DateTime?> saveFirstLaunchDate() async{
+    final existSettings = await isar.appSettings.where().findFirst();
+    if (existSettings == null){
+      final settings = AppSettings()..firstLaunchDate = DateTime.now();
+      await isar.writeTxn(() => isar.appSettings.put(settings));
+    }
+  }
+
+  Future<DateTime?> getFirstLaunchDate() async{
+    final settings = await isar.appSettings.where().findFirst();
+    return settings?.firstLaunchDate;
+  }
 }
+

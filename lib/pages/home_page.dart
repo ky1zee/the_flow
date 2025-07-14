@@ -1,9 +1,13 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:the_flow/components/habit_tile.dart';
 import 'package:the_flow/database/database_provider.dart';
 import 'package:the_flow/models/habit.dart';
+import 'package:the_flow/pages/chart_page.dart';
 import 'package:the_flow/theme/theme_provider.dart';
+
+import '../util/habit_util.dart';
 
 class HomePage extends StatefulWidget{
   const HomePage({super.key});
@@ -15,10 +19,245 @@ class HomePage extends StatefulWidget{
 class _HomePageState extends State<HomePage> {
 
   @override
+  void initState() {
+
+    Provider.of<Database>(context, listen: false).readHabit();
+
+    super.initState();
+  }
+
+  // Text Controller
+  final TextEditingController textController = TextEditingController();
+
+  // Create New Habit
+  void createNewHabit() {
+    textController.clear();
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        bool isFieldEmpty = false;
+
+        return StatefulBuilder(
+          builder: (context, setState) => AlertDialog(
+            content: TextFormField(
+              controller: textController,
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                color: Theme.of(context).colorScheme.inversePrimary,
+              ),
+              decoration: InputDecoration(
+                hintText: "Add a new habit",
+                hintStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+                errorText: isFieldEmpty ? "Habit's name can't be empty!" : null,
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  String newHabitName = textController.text.trim();
+
+                  if (newHabitName.isEmpty) {
+                    setState(() {
+                      isFieldEmpty = true;
+                    });
+                    return;
+                  }
+
+                  context.read<Database>().createHabit(newHabitName);
+
+                  Navigator.pop(context);
+
+                  textController.clear();
+                },
+                child: Text(
+                  'Save',
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    color: Theme.of(context).colorScheme.inversePrimary,
+                  ),
+                ),
+              ),
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  textController.clear();
+                },
+                child: Text(
+                  'Cancel',
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    color: Theme.of(context).colorScheme.inversePrimary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // Check Habit True & False
+  void checkHabitTrueFalse(bool? value, Habit habit) {
+    // Update Habit Status
+    if (value != null) {
+      context.read<Database>().checklistHabit(habit.id, value);
+    }
+  }
+
+  // Edit Habit
+  void editHabit(Habit habit) {
+    textController.text = habit.name;
+
+    bool isFieldEmpty = false;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) => AlertDialog(
+            content: TextFormField(
+              controller: textController,
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                color: Theme.of(context).colorScheme.inversePrimary,
+              ),
+              decoration: InputDecoration(
+                hintText: "Edit habit name",
+                hintStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+                errorText: isFieldEmpty ? "Habit's name can't be empty!" : null,
+              ),
+            ),
+            actions: [
+              // Save button
+              TextButton(
+                onPressed: () {
+                  String newHabitName = textController.text.trim();
+
+                  if (newHabitName.isEmpty) {
+                    setState(() {
+                      isFieldEmpty = true;
+                    });
+                    return;
+                  }
+
+                  context.read<Database>().updateHabit(habit.id, newHabitName);
+
+                  Navigator.pop(context);
+                  textController.clear();
+                },
+                child: Text(
+                  'Save',
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    color: Theme.of(context).colorScheme.inversePrimary,
+                  ),
+                ),
+              ),
+
+              // Cancel Button
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  textController.clear();
+                },
+                child: Text(
+                  'Cancel',
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    color: Theme.of(context).colorScheme.inversePrimary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // Delete Habit
+  void deleteHabit(Habit habit) {
+    showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text(
+              "Are sure want to delete this habit?",
+              style:
+              Theme.of(context).textTheme.bodyLarge?.copyWith(
+                color: Theme.of(context).colorScheme.inversePrimary,
+              ),
+          ),
+          actions: [
+            // delete button
+            MaterialButton(
+              onPressed: (){
+
+                context.read<Database>().deleteHabit(habit.id);
+
+                Navigator.pop(context);
+
+              },
+              child: Text(
+                  'Delete',
+                  style:
+                  Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    color: Theme.of(context).colorScheme.inversePrimary,
+                  ),
+              ),
+            ),
+
+            // Cancel Button
+            MaterialButton(
+              onPressed: () {
+                Navigator.pop(context);
+              },
+              child: Text(
+                  'Cancel',
+                  style:
+                  Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    color: Theme.of(context).colorScheme.inversePrimary,
+                  ),
+              ),
+            ),
+          ],
+        )
+    );
+  }
+
+  void navigateToChartPage() {
+    Navigator.of(context).push(
+      PageRouteBuilder(
+        transitionDuration: const Duration(milliseconds: 300),
+        pageBuilder: (context, animation, secondaryAnimation) => const ChartPage(),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          final tween = Tween<Offset>(
+            begin: const Offset(1.0, 0.0), // Mulai dari kanan
+            end: Offset.zero,
+          );
+          final curvedAnimation = CurvedAnimation(
+            parent: animation,
+            curve: Curves.easeInOut,
+          );
+          return SlideTransition(
+            position: tween.animate(curvedAnimation),
+            child: child,
+          );
+        },
+      ),
+    );
+  }
+
+  @override
   Widget build(BuildContext context){
     return Scaffold(
       appBar: AppBar(
         iconTheme: IconThemeData(color: Theme.of(context).colorScheme.inversePrimary),
+          actions: [
+            IconButton(
+              icon: Icon(Icons.bar_chart_rounded),
+              onPressed: navigateToChartPage,
+            ),
+          ],
       ),
       drawer: Drawer(
         backgroundColor: Theme.of(context).colorScheme.surface,
@@ -28,9 +267,10 @@ class _HomePageState extends State<HomePage> {
             children: [
               Text(
                 "Dark Mode",
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  color: Theme.of(context).colorScheme.inversePrimary,
-                ),
+                style:
+                  Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    color: Theme.of(context).colorScheme.inversePrimary,
+                  ),
               ),
               SizedBox(height: 8.0),
               CupertinoSwitch(
@@ -43,6 +283,7 @@ class _HomePageState extends State<HomePage> {
           ),
         ),
       ),
+
       floatingActionButton: Container(
         width: 82.0,
         height: 82.0,
@@ -58,7 +299,7 @@ class _HomePageState extends State<HomePage> {
           ],
         ),
         child: FloatingActionButton(
-          onPressed: () {},
+          onPressed: createNewHabit,
           shape: CircleBorder(),
           elevation: 0, // Remove the default elevation
           backgroundColor: Theme.of(context).colorScheme.tertiary,
@@ -69,6 +310,41 @@ class _HomePageState extends State<HomePage> {
           ),
         ),
       ),
+
+      body: GestureDetector(
+        onHorizontalDragEnd: (details) {
+          if (details.primaryVelocity != null && details.primaryVelocity! < 0) {
+            navigateToChartPage(); // Change to another page with gesture
+          }
+        },
+        child: _buildHabitList(),
+      ),
+    );
+  }
+
+  // Build Habit List
+  Widget _buildHabitList() {
+    // Habit Database
+    final  database  = context.watch<Database>();
+
+    // Current Habits
+    List<Habit> currentHabits = database.currentHabit;
+
+    return ListView.builder(
+      itemCount: currentHabits.length,
+      itemBuilder: (context, index) {
+        final habit = currentHabits[index];
+        bool isCompletedToday = isHabitCompletedToday(habit.completedDays);
+
+        // Return Habit Tile
+        return HabitTile(
+            isCompleted: isCompletedToday,
+            text: habit.name,
+            onChanged: (value) => checkHabitTrueFalse(value, habit),
+            editHabit: (context) => editHabit (habit),
+            deleteHabit: (context) => deleteHabit (habit),
+        );
+      },
     );
   }
 }
