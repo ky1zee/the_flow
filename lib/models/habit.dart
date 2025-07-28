@@ -9,4 +9,6 @@ class Habit{
   late String name;
 
   List<DateTime> completedDays = [];
+
+  bool hasTimer = false;
 }

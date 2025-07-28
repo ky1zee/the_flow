@@ -44,6 +44,13 @@ dependencies:
   path_provider: ^2.1.4
   flutter_slidable: ^3.1.2
   flutter_heatmap_calendar: ^1.0.5
+  intl: ^0.18.1
+  phosphor_flutter: ^2.0.0
+  auto_size_text: ^3.0.0
+  sleek_circular_slider: ^2.0.1
+  circular_countdown_timer: ^0.2.1
+  lottie: ^3.0.0
+  audioplayers: ^5.2.1
 
 dev_dependencies:
   flutter_test:
@@ -68,6 +75,14 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+
+  assets:
+    - assets/focus.json
+    - assets/complete.json
+    - assets/sounds/rain.mp3
+    - assets/sounds/wind.mp3
+    - assets/sounds/nature.mp3
+    - assets/sounds/reward.mp3
 
   # To add assets to your application, add an assets section, like this:
   # assets:
@@ -96,6 +111,9 @@ flutter:
   #       - asset: fonts/TrajanPro.ttf
   #       - asset: fonts/TrajanPro_Bold.ttf
   #         weight: 700
+  #   - family: Phosphor
+  #      fonts:
+  #        - asset: packages/phosphor_flutter/fonts/Phosphor.ttf
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package

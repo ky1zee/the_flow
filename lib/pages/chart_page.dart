@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:the_flow/database/database_provider.dart';
 import 'package:the_flow/models/habit.dart';
 import 'package:the_flow/util/habit_util.dart';
+import 'package:intl/intl.dart';
 
 class ChartPage extends StatefulWidget{
   const ChartPage({super.key});
@@ -59,7 +60,7 @@ class _ChartPageState extends State<ChartPage> {
         } else if (snapshot.hasError) {
           return Center(child: Text('Error: ${snapshot.error}'));
         } else if (!snapshot.hasData || snapshot.data == null) {
-          return const Center(child: Text('Tanggal pertama tidak ditemukan'));
+          return const Center(child: Text('First date not found'));
         }
 
         final datasets = generateDatasets(currentHabits);
@@ -75,7 +76,7 @@ class _ChartPageState extends State<ChartPage> {
               iconTheme: IconThemeData(color: Theme.of(context).colorScheme.inversePrimary),
             ),
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+              padding: const EdgeInsets.symmetric(horizontal: 12.0),
               child: HeatMapCalendar(
                 initDate: snapshot.data!,
                 defaultColor: Theme.of(context).colorScheme.surfaceDim,
@@ -98,6 +99,64 @@ class _ChartPageState extends State<ChartPage> {
                 flexible: true,
                 colorMode: ColorMode.color,
                 datasets: datasets,
+                onClick: (selectedDate) {
+                  final completedHabitsOnDate = currentHabits.where((habit) {
+                    return habit.completedDays.any((d) =>
+                    d.year == selectedDate.year &&
+                        d.month == selectedDate.month &&
+                        d.day == selectedDate.day);
+                  }).toList();
+
+                  final int itemCount = completedHabitsOnDate.isEmpty ? 1 : completedHabitsOnDate.length;
+                  final double baseHeightPerItem = 52;
+                  final double maxHeight = baseHeightPerItem * 5;
+                  final double desiredHeight = (itemCount * baseHeightPerItem).clamp(100, maxHeight);
+
+                  showModalBottomSheet(
+                    context: context,
+                    shape: const RoundedRectangleBorder(
+                      borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+                    ),
+                    builder: (_) => SizedBox(
+                      height: desiredHeight + 80, // +80 for padding, title, etc.
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "Completed on ${DateFormat.yMMMMd().format(selectedDate)}",
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
+                            const SizedBox(height: 10),
+                            if (completedHabitsOnDate.isEmpty)
+                              Container(
+                                height: 110,
+                                alignment: Alignment.center,
+                                child: const Text(
+                                  "No habit completed on this day.",
+                                  style: TextStyle(fontSize: 16),
+                                  textAlign: TextAlign.center,
+                                ),
+                              )
+                            else
+                              Expanded(
+                                child: ListView(
+                                  physics: const BouncingScrollPhysics(),
+                                  children: completedHabitsOnDate.map((habit) {
+                                    return ListTile(
+                                      leading: const Icon(Icons.check_circle, color: Colors.green),
+                                      title: Text(habit.name),
+                                    );
+                                  }).toList(),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                },
                 colorsets: {
                   1: Colors.green.shade200,
                   2: Colors.green.shade400,

@@ -19,8 +19,10 @@ class Database extends ChangeNotifier{
   final List<Habit> currentHabit = [];
 
   // CREATE
-  Future<void> createHabit(String habitName) async{
-    final newHabit = Habit()..name = habitName;
+  Future<void> createHabit(String habitName, hasTimer) async{
+    final newHabit = Habit()
+      ..name = habitName
+      ..hasTimer = hasTimer;
     await isar.writeTxn(() => isar.habits.put(newHabit));
     readHabit();
   }
@@ -65,13 +67,14 @@ class Database extends ChangeNotifier{
     readHabit();
   }
 
-  // UPDATE NAME
-  Future<void> updateHabit(int id, String newName) async{
+  // UPDATE HABIT
+  Future<void> updateHabit(int id, String newName, bool hasTimer) async{
     final habit =  await isar.habits.get(id);
 
     if(habit != null){
       await isar.writeTxn(() async{
         habit.name = newName;
+        habit.hasTimer = hasTimer;
         await isar.habits.put(habit);
       });
     }

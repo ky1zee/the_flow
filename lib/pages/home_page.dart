@@ -6,6 +6,7 @@ import 'package:the_flow/database/database_provider.dart';
 import 'package:the_flow/models/habit.dart';
 import 'package:the_flow/pages/chart_page.dart';
 import 'package:the_flow/theme/theme_provider.dart';
+import 'package:the_flow/pages/timer_page.dart';
 
 import '../util/habit_util.dart';
 
@@ -37,23 +38,60 @@ class _HomePageState extends State<HomePage> {
       context: context,
       builder: (context) {
         bool isFieldEmpty = false;
+        bool enableTimer = false;
 
         return StatefulBuilder(
           builder: (context, setState) => AlertDialog(
-            content: TextFormField(
-              controller: textController,
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                color: Theme.of(context).colorScheme.inversePrimary,
-              ),
-              decoration: InputDecoration(
-                hintText: "Add a new habit",
-                hintStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: Theme.of(context).colorScheme.primary,
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  controller: textController,
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    color: Theme.of(context).colorScheme.inversePrimary,
+                  ),
+                  decoration: InputDecoration(
+                    hintText: "Add a new habit",
+                    hintStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                    errorText:
+                    isFieldEmpty ? "Habit's name can't be empty!" : null,
+                  ),
                 ),
-                errorText: isFieldEmpty ? "Habit's name can't be empty!" : null,
-              ),
+
+                const SizedBox(height: 16),
+
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      "Enable Focus Timer",
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        color: Theme.of(context).colorScheme.inversePrimary,
+                      ),
+                    ),
+                    CupertinoSwitch(
+                      value: enableTimer,
+                      onChanged: (value) => setState(() => enableTimer = value),
+                    ),
+                  ],
+                ),
+              ],
             ),
             actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  textController.clear();
+                },
+                child: Text(
+                  'Cancel',
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    color: Theme.of(context).colorScheme.inversePrimary,
+                  ),
+                ),
+              ),
               TextButton(
                 onPressed: () {
                   String newHabitName = textController.text.trim();
@@ -65,26 +103,13 @@ class _HomePageState extends State<HomePage> {
                     return;
                   }
 
-                  context.read<Database>().createHabit(newHabitName);
+                  context.read<Database>().createHabit(newHabitName, enableTimer);
 
                   Navigator.pop(context);
-
                   textController.clear();
                 },
                 child: Text(
                   'Save',
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: Theme.of(context).colorScheme.inversePrimary,
-                  ),
-                ),
-              ),
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  textController.clear();
-                },
-                child: Text(
-                  'Cancel',
                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                     color: Theme.of(context).colorScheme.inversePrimary,
                   ),
@@ -110,27 +135,63 @@ class _HomePageState extends State<HomePage> {
     textController.text = habit.name;
 
     bool isFieldEmpty = false;
+    bool enableTimer = habit.hasTimer;
 
     showDialog(
       context: context,
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setState) => AlertDialog(
-            content: TextFormField(
-              controller: textController,
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                color: Theme.of(context).colorScheme.inversePrimary,
-              ),
-              decoration: InputDecoration(
-                hintText: "Edit habit name",
-                hintStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: Theme.of(context).colorScheme.primary,
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  controller: textController,
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    color: Theme.of(context).colorScheme.inversePrimary,
+                  ),
+                  decoration: InputDecoration(
+                    hintText: "Edit habit name",
+                    hintStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                    errorText:
+                    isFieldEmpty ? "Habit's name can't be empty!" : null,
+                  ),
                 ),
-                errorText: isFieldEmpty ? "Habit's name can't be empty!" : null,
-              ),
+
+                const SizedBox(height: 16),
+
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      "Enable Focus Timer",
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        color: Theme.of(context).colorScheme.inversePrimary,
+                      ),
+                    ),
+                    CupertinoSwitch(
+                      value: enableTimer,
+                      onChanged: (value) => setState(() => enableTimer = value),
+                    ),
+                  ],
+                ),
+              ],
             ),
             actions: [
-              // Save button
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  textController.clear();
+                },
+                child: Text(
+                  'Cancel',
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    color: Theme.of(context).colorScheme.inversePrimary,
+                  ),
+                ),
+              ),
               TextButton(
                 onPressed: () {
                   String newHabitName = textController.text.trim();
@@ -142,27 +203,17 @@ class _HomePageState extends State<HomePage> {
                     return;
                   }
 
-                  context.read<Database>().updateHabit(habit.id, newHabitName);
+                  context.read<Database>().updateHabit(
+                    habit.id,
+                    newHabitName,
+                    enableTimer,
+                  );
 
                   Navigator.pop(context);
                   textController.clear();
                 },
                 child: Text(
                   'Save',
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: Theme.of(context).colorScheme.inversePrimary,
-                  ),
-                ),
-              ),
-
-              // Cancel Button
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  textController.clear();
-                },
-                child: Text(
-                  'Cancel',
                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                     color: Theme.of(context).colorScheme.inversePrimary,
                   ),
@@ -231,7 +282,7 @@ class _HomePageState extends State<HomePage> {
         pageBuilder: (context, animation, secondaryAnimation) => const ChartPage(),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           final tween = Tween<Offset>(
-            begin: const Offset(1.0, 0.0), // Mulai dari kanan
+            begin: const Offset(1.0, 0.0),
             end: Offset.zero,
           );
           final curvedAnimation = CurvedAnimation(
@@ -338,11 +389,25 @@ class _HomePageState extends State<HomePage> {
 
         // Return Habit Tile
         return HabitTile(
-            isCompleted: isCompletedToday,
-            text: habit.name,
-            onChanged: (value) => checkHabitTrueFalse(value, habit),
-            editHabit: (context) => editHabit (habit),
-            deleteHabit: (context) => deleteHabit (habit),
+          isCompleted: isCompletedToday,
+          text: habit.name,
+          hasTimer: habit.hasTimer,
+          onChanged: (value) => checkHabitTrueFalse(value, habit),
+          editHabit: (context) => editHabit (habit),
+          deleteHabit: (context) => deleteHabit (habit),
+
+          onTapHabit: () {
+            if (habit.hasTimer && !isCompletedToday) {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => TimerPage(habit: habit),
+                ),
+              );
+            } else {
+              checkHabitTrueFalse(!isCompletedToday, habit);
+            }
+          },
+
         );
       },
     );

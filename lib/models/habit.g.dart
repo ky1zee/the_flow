@@ -22,8 +22,13 @@ const HabitSchema = CollectionSchema(
       name: r'completedDays',
       type: IsarType.dateTimeList,
     ),
-    r'name': PropertySchema(
+    r'hasTimer': PropertySchema(
       id: 1,
+      name: r'hasTimer',
+      type: IsarType.bool,
+    ),
+    r'name': PropertySchema(
+      id: 2,
       name: r'name',
       type: IsarType.string,
     )
@@ -60,7 +65,8 @@ void _habitSerialize(
   Map<Type, List<int>> allOffsets,
 ) {
   writer.writeDateTimeList(offsets[0], object.completedDays);
-  writer.writeString(offsets[1], object.name);
+  writer.writeBool(offsets[1], object.hasTimer);
+  writer.writeString(offsets[2], object.name);
 }
 
 Habit _habitDeserialize(
@@ -71,8 +77,9 @@ Habit _habitDeserialize(
 ) {
   final object = Habit();
   object.completedDays = reader.readDateTimeList(offsets[0]) ?? [];
+  object.hasTimer = reader.readBool(offsets[1]);
   object.id = id;
-  object.name = reader.readString(offsets[1]);
+  object.name = reader.readString(offsets[2]);
   return object;
 }
 
@@ -86,6 +93,8 @@ P _habitDeserializeProp<P>(
     case 0:
       return (reader.readDateTimeList(offset) ?? []) as P;
     case 1:
+      return (reader.readBool(offset)) as P;
+    case 2:
       return (reader.readString(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -320,6 +329,16 @@ extension HabitQueryFilter on QueryBuilder<Habit, Habit, QFilterCondition> {
     });
   }
 
+  QueryBuilder<Habit, Habit, QAfterFilterCondition> hasTimerEqualTo(
+      bool value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'hasTimer',
+        value: value,
+      ));
+    });
+  }
+
   QueryBuilder<Habit, Habit, QAfterFilterCondition> idEqualTo(Id value) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.equalTo(
@@ -506,6 +525,18 @@ extension HabitQueryObject on QueryBuilder<Habit, Habit, QFilterCondition> {}
 extension HabitQueryLinks on QueryBuilder<Habit, Habit, QFilterCondition> {}
 
 extension HabitQuerySortBy on QueryBuilder<Habit, Habit, QSortBy> {
+  QueryBuilder<Habit, Habit, QAfterSortBy> sortByHasTimer() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'hasTimer', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Habit, Habit, QAfterSortBy> sortByHasTimerDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'hasTimer', Sort.desc);
+    });
+  }
+
   QueryBuilder<Habit, Habit, QAfterSortBy> sortByName() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'name', Sort.asc);
@@ -520,6 +551,18 @@ extension HabitQuerySortBy on QueryBuilder<Habit, Habit, QSortBy> {
 }
 
 extension HabitQuerySortThenBy on QueryBuilder<Habit, Habit, QSortThenBy> {
+  QueryBuilder<Habit, Habit, QAfterSortBy> thenByHasTimer() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'hasTimer', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Habit, Habit, QAfterSortBy> thenByHasTimerDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'hasTimer', Sort.desc);
+    });
+  }
+
   QueryBuilder<Habit, Habit, QAfterSortBy> thenById() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'id', Sort.asc);
@@ -552,6 +595,12 @@ extension HabitQueryWhereDistinct on QueryBuilder<Habit, Habit, QDistinct> {
     });
   }
 
+  QueryBuilder<Habit, Habit, QDistinct> distinctByHasTimer() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'hasTimer');
+    });
+  }
+
   QueryBuilder<Habit, Habit, QDistinct> distinctByName(
       {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
@@ -571,6 +620,12 @@ extension HabitQueryProperty on QueryBuilder<Habit, Habit, QQueryProperty> {
       completedDaysProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'completedDays');
+    });
+  }
+
+  QueryBuilder<Habit, bool, QQueryOperations> hasTimerProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'hasTimer');
     });
   }
 
