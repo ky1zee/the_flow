@@ -6,6 +6,9 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:the_flow/database/database_provider.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+
+import '../main.dart';
 
 class OngoingPage extends StatefulWidget {
   final int habitId;
@@ -23,7 +26,8 @@ class OngoingPage extends StatefulWidget {
   State<OngoingPage> createState() => _OngoingPageState();
 }
 
-class _OngoingPageState extends State<OngoingPage> with SingleTickerProviderStateMixin {
+class _OngoingPageState extends State<OngoingPage>
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   late int _remainingSeconds;
   Timer? _timer;
 
@@ -81,31 +85,27 @@ class _OngoingPageState extends State<OngoingPage> with SingleTickerProviderStat
     });
   }
 
+
   @override
   void initState() {
     super.initState();
+
+    WidgetsBinding.instance.addObserver(this);
 
     _lottieController = AnimationController(vsync: this);
 
     _randomQuote = _quotes[_random.nextInt(_quotes.length)];
     _remainingSeconds = widget.durationInMinutes * 60;
 
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (_remainingSeconds <= 1) {
-        timer.cancel();
-        _onTimerComplete();
-      } else {
-        setState(() {
-          _remainingSeconds--;
-        });
-      }
-    });
+    _startTimer();
 
     _quoteTimer = Timer.periodic(const Duration(seconds: 7), (_) => _updateQuote());
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+
     _lottieController.dispose();
     _timer?.cancel();
     _quoteTimer?.cancel();
@@ -116,8 +116,69 @@ class _OngoingPageState extends State<OngoingPage> with SingleTickerProviderStat
     super.dispose();
   }
 
-  void _onTimerComplete() async {
+  void _startTimer() {
+    _timer?.cancel();
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_remainingSeconds <= 1) {
+        timer.cancel();
+        _onTimerComplete();
+      } else {
+        setState(() {
+          _remainingSeconds--;
+        });
+      }
+    });
+  }
 
+  void _pauseTimer() {
+    _timer?.cancel();
+    _timer = null;
+  }
+
+  Future<void> _showReminderNotification() async {
+    const androidChannel = AndroidNotificationDetails(
+      'focus_channel',
+      'Focus Timer',
+      channelDescription: 'Reminder to return to focus timer',
+      importance: Importance.max,
+      priority: Priority.high,
+      ongoing: true,
+      autoCancel: false,
+      playSound: true,
+    );
+
+    const iosDetails = DarwinNotificationDetails();
+
+    const platformDetails = NotificationDetails(
+      android: androidChannel,
+      iOS: iosDetails,
+    );
+
+    await flutterLocalNotificationsPlugin.show(
+      0,
+      'Focus Timer Running',
+      'Your timer for "${widget.habitName}" is still running. Come back!',
+      platformDetails,
+    );
+  }
+
+  // Observe App State
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+
+    if (state == AppLifecycleState.paused && _remainingSeconds > 0) {
+      // Minimize App → Send Notification + Pause timer
+      _showReminderNotification();
+      _pauseTimer();
+    } else if (state == AppLifecycleState.resumed) {
+      // Back to App → Cancel Notification + Resume timer
+      flutterLocalNotificationsPlugin.cancel(0);
+      _startTimer();
+    }
+  }
+
+  void _onTimerComplete() async {
     await _donePlayer.setVolume(1.0);
     await _donePlayer.play(AssetSource('sounds/reward.mp3'));
 
@@ -141,26 +202,39 @@ class _OngoingPageState extends State<OngoingPage> with SingleTickerProviderStat
                 Lottie.asset(
                   'assets/complete.json',
                   height: 150,
-                  repeat: false,
+                  repeat: true,
                 ),
                 const SizedBox(height: 20),
                 Text(
                   "You already complete this habit.\nGood Work",
                   textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  style: Theme
+                      .of(context)
+                      .textTheme
+                      .titleMedium
+                      ?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
                 ),
               ],
             ),
             actions: [
-              TextButton(
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 20, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(13),
+                  ),
+                ),
                 onPressed: () {
                   if (mounted) {
                     Navigator.popUntil(context, (route) => route.isFirst);
                   }
                 },
-                child: const Text("Next"),
+                child: const Text("Done"),
               ),
             ],
           ),
@@ -178,7 +252,7 @@ class _OngoingPageState extends State<OngoingPage> with SingleTickerProviderStat
       canPop: false,
       onPopInvokedWithResult: (didPop, result) {
         if (!didPop) {
-          Navigator.popUntil(context, (route) => route.isFirst);
+          Navigator.pop(context);
         }
       },
       child: Scaffold(

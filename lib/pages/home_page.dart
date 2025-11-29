@@ -92,7 +92,7 @@ class _HomePageState extends State<HomePage> {
                   ),
                 ),
               ),
-              TextButton(
+              ElevatedButton(
                 onPressed: () {
                   String newHabitName = textController.text.trim();
 
@@ -108,12 +108,11 @@ class _HomePageState extends State<HomePage> {
                   Navigator.pop(context);
                   textController.clear();
                 },
-                child: Text(
-                  'Save',
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: Theme.of(context).colorScheme.inversePrimary,
-                  ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  foregroundColor: Colors.white,
                 ),
+                child: const Text("Save"),
               ),
             ],
           ),
@@ -192,7 +191,7 @@ class _HomePageState extends State<HomePage> {
                   ),
                 ),
               ),
-              TextButton(
+              ElevatedButton(
                 onPressed: () {
                   String newHabitName = textController.text.trim();
 
@@ -212,12 +211,11 @@ class _HomePageState extends State<HomePage> {
                   Navigator.pop(context);
                   textController.clear();
                 },
-                child: Text(
-                  'Save',
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: Theme.of(context).colorScheme.inversePrimary,
-                  ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  foregroundColor: Colors.white,
                 ),
+                child: const Text("Save"),
               ),
             ],
           ),
@@ -240,7 +238,7 @@ class _HomePageState extends State<HomePage> {
           ),
           actions: [
             // delete button
-            MaterialButton(
+            ElevatedButton(
               onPressed: (){
 
                 context.read<Database>().deleteHabit(habit.id);
@@ -248,13 +246,11 @@ class _HomePageState extends State<HomePage> {
                 Navigator.pop(context);
 
               },
-              child: Text(
-                  'Delete',
-                  style:
-                  Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: Theme.of(context).colorScheme.inversePrimary,
-                  ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
               ),
+              child: const Text("Delete"),
             ),
 
             // Cancel Button
@@ -275,6 +271,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  // Navigate to Chart Page
   void navigateToChartPage() {
     Navigator.of(context).push(
       PageRouteBuilder(
@@ -296,6 +293,32 @@ class _HomePageState extends State<HomePage> {
         },
       ),
     );
+  }
+
+  // Confirmation to Unchecklist Habit == hasTimer
+  Future<bool> showUncheckConfirmation(BuildContext context, String habitName) async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Confirm Uncheck"),
+        content: Text("Are you sure you want to uncheck habit \"$habitName\"?"),
+        actions: [
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text("Yes, Uncheck"),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text("Cancel"),
+          ),
+        ],
+      ),
+    );
+    return result ?? false;
   }
 
   @override
@@ -336,7 +359,7 @@ class _HomePageState extends State<HomePage> {
       ),
 
       floatingActionButton: Container(
-        width: 82.0,
+        width: 65.0,
         height: 82.0,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
@@ -356,8 +379,8 @@ class _HomePageState extends State<HomePage> {
           backgroundColor: Theme.of(context).colorScheme.tertiary,
           child: Icon(
             Icons.add,
-            color: Theme.of(context).colorScheme.inversePrimary,
-            size: 37,
+            color: Colors.blueAccent,
+            size: 36,
           ),
         ),
       ),
@@ -381,33 +404,72 @@ class _HomePageState extends State<HomePage> {
     // Current Habits
     List<Habit> currentHabits = database.currentHabit;
 
+    if (currentHabits.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 70.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.self_improvement,
+                size: 80,
+                color: Colors.grey.shade400,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                "No habits yet",
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                "Tap the + button below to create your first habit.",
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Colors.grey,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return ListView.builder(
+      padding: const EdgeInsets.only(bottom: 100),
       itemCount: currentHabits.length,
       itemBuilder: (context, index) {
         final habit = currentHabits[index];
         bool isCompletedToday = isHabitCompletedToday(habit.completedDays);
 
-        // Return Habit Tile
         return HabitTile(
           isCompleted: isCompletedToday,
           text: habit.name,
           hasTimer: habit.hasTimer,
           onChanged: (value) => checkHabitTrueFalse(value, habit),
-          editHabit: (context) => editHabit (habit),
-          deleteHabit: (context) => deleteHabit (habit),
-
-          onTapHabit: () {
+          editHabit: (context) => editHabit(habit),
+          deleteHabit: (context) => deleteHabit(habit),
+          onTapHabit: () async {
             if (habit.hasTimer && !isCompletedToday) {
+              // If unchecklist && hasTimer
               Navigator.of(context).push(
                 MaterialPageRoute(
                   builder: (context) => TimerPage(habit: habit),
                 ),
               );
+            } else if (habit.hasTimer && isCompletedToday) {
+              // If Checklisted && hasTimer
+              final confirm = await showUncheckConfirmation(context, habit.name);
+              if (confirm) {
+                checkHabitTrueFalse(false, habit);
+              }
             } else {
+              // Habit !hasTimer
               checkHabitTrueFalse(!isCompletedToday, habit);
             }
           },
-
         );
       },
     );

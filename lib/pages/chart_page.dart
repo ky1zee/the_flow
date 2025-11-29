@@ -5,8 +5,9 @@ import 'package:the_flow/database/database_provider.dart';
 import 'package:the_flow/models/habit.dart';
 import 'package:the_flow/util/habit_util.dart';
 import 'package:intl/intl.dart';
+import 'package:percent_indicator/percent_indicator.dart';
 
-class ChartPage extends StatefulWidget{
+class ChartPage extends StatefulWidget {
   const ChartPage({super.key});
 
   @override
@@ -14,21 +15,50 @@ class ChartPage extends StatefulWidget{
 }
 
 class _ChartPageState extends State<ChartPage> {
+  DateTime? _selectedDate = DateTime.now();
+  DateTime _normalize(DateTime d) => DateTime(d.year, d.month, d.day);
 
   @override
   void initState() {
-
     Provider.of<Database>(context, listen: false).readHabit();
-
     super.initState();
   }
 
   // Check Habit True & False
   void checkHabitTrueFalse(bool? value, Habit habit) {
-    // Update Habit Status
     if (value != null) {
       context.read<Database>().checklistHabit(habit.id, value);
     }
+  }
+
+  // Count current streak
+  int getCurrentStreak(List<DateTime> days) {
+    final set = days.map(_normalize).toSet();
+    DateTime today = _normalize(DateTime.now());
+    int streak = 0;
+
+    while (set.contains(today)) {
+      streak++;
+      today = today.subtract(const Duration(days: 1));
+    }
+    return streak;
+  }
+
+  // Count longest streak
+  int getLongestStreak(List<DateTime> days) {
+    final sorted = days.map(_normalize).toList()..sort();
+    if (sorted.isEmpty) return 0;
+
+    int longest = 1, cur = 1;
+    for (int i = 1; i < sorted.length; i++) {
+      if (sorted[i].difference(sorted[i - 1]).inDays == 1) {
+        cur++;
+        longest = cur > longest ? cur : longest;
+      } else {
+        cur = 1;
+      }
+    }
+    return longest;
   }
 
   @override
@@ -41,7 +71,9 @@ class _ChartPageState extends State<ChartPage> {
       },
       child: Scaffold(
         appBar: AppBar(
-          iconTheme: IconThemeData(color: Theme.of(context).colorScheme.inversePrimary),
+          surfaceTintColor: Colors.transparent,
+          iconTheme:
+          IconThemeData(color: Theme.of(context).colorScheme.inversePrimary),
         ),
         body: _buildChart(),
       ),
@@ -52,33 +84,31 @@ class _ChartPageState extends State<ChartPage> {
     final database = context.watch<Database>();
     final List<Habit> currentHabits = database.currentHabit;
 
-    return FutureBuilder<DateTime?>(
-      future: database.getFirstLaunchDate(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        } else if (snapshot.hasError) {
-          return Center(child: Text('Error: ${snapshot.error}'));
-        } else if (!snapshot.hasData || snapshot.data == null) {
-          return const Center(child: Text('First date not found'));
-        }
+    final datasets = generateDatasets(currentHabits);
 
-        final datasets = generateDatasets(currentHabits);
-        debugPrint("=== DATASETS GENERATED ===");
-        datasets.forEach((key, value) {
-          debugPrint("${key.toIso8601String()} -> $value");
-        });
+    final completedHabitsOnDate = _selectedDate == null
+        ? []
+        : currentHabits.where((habit) {
+      return habit.completedDays.any((d) =>
+      d.year == _selectedDate!.year &&
+          d.month == _selectedDate!.month &&
+          d.day == _selectedDate!.day);
+    }).toList();
 
-        return DefaultTextStyle(
-          style: TextStyle(color: Theme.of(context).colorScheme.inversePrimary),
-          child: Theme(
-            data: Theme.of(context).copyWith(
-              iconTheme: IconThemeData(color: Theme.of(context).colorScheme.inversePrimary),
-            ),
-            child: Padding(
+    return DefaultTextStyle(
+      style: TextStyle(color: Theme.of(context).colorScheme.inversePrimary),
+      child: Theme(
+        data: Theme.of(context).copyWith(
+          iconTheme:
+          IconThemeData(color: Theme.of(context).colorScheme.inversePrimary),
+        ),
+        child: Column(
+          children: [
+            // Heatmap Calendar
+            Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12.0),
               child: HeatMapCalendar(
-                initDate: snapshot.data!,
+                initDate: DateTime.now(),
                 defaultColor: Theme.of(context).colorScheme.surfaceDim,
                 textColor: Colors.white,
                 monthFontSize: 16,
@@ -87,11 +117,13 @@ class _ChartPageState extends State<ChartPage> {
                 colorTipHelper: [
                   Text(
                     "Less  ",
-                    style: TextStyle(color: Theme.of(context).colorScheme.inversePrimary),
+                    style: TextStyle(
+                        color: Theme.of(context).colorScheme.inversePrimary),
                   ),
                   Text(
                     "  More",
-                    style: TextStyle(color: Theme.of(context).colorScheme.inversePrimary),
+                    style: TextStyle(
+                        color: Theme.of(context).colorScheme.inversePrimary),
                   ),
                 ],
                 colorTipCount: 5,
@@ -100,62 +132,15 @@ class _ChartPageState extends State<ChartPage> {
                 colorMode: ColorMode.color,
                 datasets: datasets,
                 onClick: (selectedDate) {
-                  final completedHabitsOnDate = currentHabits.where((habit) {
-                    return habit.completedDays.any((d) =>
-                    d.year == selectedDate.year &&
-                        d.month == selectedDate.month &&
-                        d.day == selectedDate.day);
-                  }).toList();
-
-                  final int itemCount = completedHabitsOnDate.isEmpty ? 1 : completedHabitsOnDate.length;
-                  final double baseHeightPerItem = 52;
-                  final double maxHeight = baseHeightPerItem * 5;
-                  final double desiredHeight = (itemCount * baseHeightPerItem).clamp(100, maxHeight);
-
-                  showModalBottomSheet(
-                    context: context,
-                    shape: const RoundedRectangleBorder(
-                      borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-                    ),
-                    builder: (_) => SizedBox(
-                      height: desiredHeight + 80, // +80 for padding, title, etc.
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              "Completed on ${DateFormat.yMMMMd().format(selectedDate)}",
-                              style: Theme.of(context).textTheme.titleMedium,
-                            ),
-                            const SizedBox(height: 10),
-                            if (completedHabitsOnDate.isEmpty)
-                              Container(
-                                height: 110,
-                                alignment: Alignment.center,
-                                child: const Text(
-                                  "No habit completed on this day.",
-                                  style: TextStyle(fontSize: 16),
-                                  textAlign: TextAlign.center,
-                                ),
-                              )
-                            else
-                              Expanded(
-                                child: ListView(
-                                  physics: const BouncingScrollPhysics(),
-                                  children: completedHabitsOnDate.map((habit) {
-                                    return ListTile(
-                                      leading: const Icon(Icons.check_circle, color: Colors.green),
-                                      title: Text(habit.name),
-                                    );
-                                  }).toList(),
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  );
+                  setState(() {
+                    _selectedDate = selectedDate;
+                  });
+                },
+                onMonthChange: (newMonth) {
+                  setState(() {
+                    _selectedDate =
+                    null;
+                  });
                 },
                 colorsets: {
                   1: Colors.green.shade200,
@@ -166,10 +151,168 @@ class _ChartPageState extends State<ChartPage> {
                 },
               ),
             ),
-          ),
-        );
-      },
+
+            const SizedBox(height: 30),
+
+            // Title ( Completed on ... )
+            Padding(
+              padding:
+              const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (_selectedDate != null) ...[
+                    Text(
+                      "Completed on ${DateFormat.yMMMMd().format(_selectedDate!)}",
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 6),
+                    Divider(
+                      thickness: 1,
+                      color: Colors.grey.withOpacity(0.3),
+                    ),
+                  ] else...[
+                    const SizedBox(height: 50),
+                    Text(
+                      "Select a date to see completed habits",
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                  ]
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 8),
+
+            // List Habits
+            Expanded(
+              child: _selectedDate == null
+                  ? const SizedBox.shrink()
+                  : completedHabitsOnDate.isEmpty
+                  ? const Center(
+                child: Text(
+                  "No habit completed on this day.",
+                  style: TextStyle(fontSize: 16),
+                  textAlign: TextAlign.center,
+                ),
+              )
+                  : ListView.builder(
+                physics: const BouncingScrollPhysics(),
+                itemCount: completedHabitsOnDate.length,
+                itemBuilder: (context, index) {
+                  final habit = completedHabitsOnDate[index];
+                  return ListTile(
+                    leading: const Icon(Icons.check_circle,
+                        color: Colors.green),
+                    title: Text(habit.name),
+                    onTap: () {
+                      showDialog(
+                        context: context,
+                        builder: (context) {
+                          final now = DateTime.now();
+                          final monthDays = habit.completedDays.where(
+                                (d) => d.year == now.year && d.month == now.month,
+                          );
+
+                          final currentStreak = getCurrentStreak(habit.completedDays);
+                          final longestStreak = getLongestStreak(habit.completedDays);
+
+                          final selectedMonthCount = habit.completedDays.where(
+                                (d) => d.year == _selectedDate!.year && d.month == _selectedDate!.month,
+                          ).length;
+
+                          final daysInSelectedMonth = DateUtils.getDaysInMonth(
+                            _selectedDate!.year,
+                            _selectedDate!.month,
+                          );
+
+                          return AlertDialog(
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            title: Text(habit.name),
+                            content: SizedBox(
+                              width: double.maxFinite,
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const SizedBox(height: 12),
+
+                                  Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          "Completed on ${DateFormat.MMMM().format(_selectedDate!)} : $selectedMonthCount days",
+                                          style: const TextStyle(fontSize: 14),
+                                        ),
+                                        const Text(
+                                          "Completion rate on this month :",
+                                          style: TextStyle(fontSize: 14),
+                                        ),
+                                        const SizedBox(height: 12),
+                                      ],
+                                    ),
+                                  ),
+
+                                  const SizedBox(height: 16),
+
+                                  Column(
+                                    children: [
+                                      CircularPercentIndicator(
+                                        radius: 60.0,
+                                        lineWidth: 10.0,
+                                        animation: true,
+                                        percent: (monthDays.length /
+                                            DateUtils.getDaysInMonth(now.year, now.month))
+                                            .clamp(0, 1)
+                                            .toDouble(),
+                                        center: Text(
+                                          "${((selectedMonthCount / daysInSelectedMonth) * 100).toStringAsFixed(1)}%",
+                                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                                        ),
+                                        progressColor: Colors.green,
+                                        backgroundColor: Colors.grey.shade300,
+                                        circularStrokeCap: CircularStrokeCap.round,
+                                      ),
+                                      const SizedBox(height: 16),
+
+                                      Divider(
+                                        thickness: 1,
+                                        color: Colors.grey.withOpacity(0.3),
+                                      ),
+
+                                      Align(
+                                        alignment: Alignment.centerLeft,
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text("🌱 Current streak      : $currentStreak days"),
+                                            Text("🔥 Longest streak     : $longestStreak days"),
+                                            Text(
+                                              "✅ Total completed   : ${habit.completedDays.length} days",
+                                              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
-
 }

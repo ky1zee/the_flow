@@ -1,7 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:sleek_circular_slider/sleek_circular_slider.dart';
-import 'package:flutter/services.dart';
 import 'package:the_flow/pages/ongoing_page.dart';
 import 'package:the_flow/models/habit.dart';
 
@@ -23,8 +22,6 @@ class _TimerPageState extends State<TimerPage> {
   void initState() {
     super.initState();
     _pickerController = FixedExtentScrollController(initialItem: (_minutes - 5).toInt());
-
-    SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.light);
   }
 
   void _updatePickerFromSlider(double value) {
@@ -44,6 +41,7 @@ class _TimerPageState extends State<TimerPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        surfaceTintColor: Colors.transparent,
         title: Text(widget.habit.name),
       ),
       body: Center(
@@ -67,6 +65,15 @@ class _TimerPageState extends State<TimerPage> {
                       itemExtent: 40,
                       useMagnifier: true,
                       magnification: 1.2,
+                      selectionOverlay: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 15),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(7),
+                          child: Container(
+                            color: Colors.grey.withOpacity(0.1),
+                          ),
+                        ),
+                      ),
                       onSelectedItemChanged: (index) {
                         final selected = (index + 5).toDouble();
                         if (_minutes != selected) {
@@ -102,7 +109,10 @@ class _TimerPageState extends State<TimerPage> {
             ),
             const SizedBox(height: 30),
             ElevatedButton.icon(
-              icon: const Icon(Icons.play_arrow),
+              icon: const Icon(
+                Icons.play_arrow,
+                color: Colors.green,
+              ),
               label: const Text("Start Timer"),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Theme.of(context).colorScheme.tertiary,
